@@ -52,10 +52,6 @@ body {
   font-size: 16px;
 }
 
-.add-task-btn:hover {
-  background-color: #45a049;
-}
-
 /* Task List */
 .task-list {
   list-style-type: none;
@@ -133,8 +129,62 @@ body.dark-mode {
   color: #fff;
 }
 
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.filter-controls label {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+.filter-controls select {
+  padding: 6px 10px;
+  font-size: 14px;
+  border: 2px solid black;
+  border-radius: 8px;
+  background-color: white;
+  color: #333;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.filter-controls select:hover {
+  background-color: #f0f8ff;
+}
+
+.filter-controls select:focus {
+  border-color: #0056b3;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+.filter-controls select option {
+  background-color: white;
+  color: #333;
+  padding: 10px;
+}
+
+.task-item.completed .task-title,
+.task-item.completed .task-description {
+  text-decoration: line-through;
+  color: #bbb; /* Light gray color for completed tasks */
+  opacity: 0.6; /* Optional: Dim the completed task for better visibility */
+}
+
+.task-item.completed .complete-incomplete-btn {
+  background-color: #28a745; /* Green color for completed tasks */
+}
+
+.task-item.completed .edit-btn {
+  background-color: #6c757d; /* Gray color for completed tasks */
+}
+
 .task-input,
-.add-task-btn,
 .task-item,
 .task-title,
 .task-description {

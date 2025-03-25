@@ -5,6 +5,7 @@ import React, {
   useContext,
   useRef,
   useState,
+  useMemo,
 } from "react";
 import "./TaskManager.css";
 import { ThemeContext } from "../../context/ThemeContext";
@@ -14,18 +15,24 @@ const initialState = {
   tasks: [],
   newTaskTitle: "",
   newTaskDescription: "",
+  filter: "all",
 };
 
 // Define the reducer function
 const taskReducer = (state, action) => {
   switch (action.type) {
+    case "SET_TASKS":
+      return { ...state, tasks: action.payload };
+
     case "ADD_TASK":
       return { ...state, tasks: [...state.tasks, action.payload] };
+
     case "DELETE_TASK":
       return {
         ...state,
         tasks: state.tasks.filter((task) => task.id !== action.payload),
       };
+
     case "TOGGLE_TASK_COMPLETION":
       return {
         ...state,
@@ -35,10 +42,15 @@ const taskReducer = (state, action) => {
             : task
         ),
       };
+
     case "SET_NEW_TASK_TITLE":
       return { ...state, newTaskTitle: action.payload };
+
     case "SET_NEW_TASK_DESCRIPTION":
       return { ...state, newTaskDescription: action.payload };
+
+    case "SET_FILTER":
+      return { ...state, filter: action.payload };
     case "EDIT_TASK":
       return {
         ...state,
@@ -52,6 +64,7 @@ const taskReducer = (state, action) => {
             : task
         ),
       };
+
     default:
       return state;
   }
@@ -62,38 +75,29 @@ const TaskManager = () => {
 
   const [state, dispatch] = useReducer(taskReducer, initialState);
 
-  // State to track focus on the task title input
-  const [isFocused, setIsFocused] = useState(false);
-
-  // Create a ref for the task title input field
+  // Ref for the task title input field
   const taskTitleInputRef = useRef(null);
 
-  // Load saved tasks from localStorage
+  // Load saved tasks from localStorage on mount
   useEffect(() => {
-    const savedTasks = JSON.parse(localStorage.getItem("tasks"));
-    if (savedTasks) {
-      savedTasks.forEach((task) => {
-        dispatch({ type: "ADD_TASK", payload: task });
-      });
+    const savedTasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    if (savedTasks.length > 0) {
+      dispatch({ type: "SET_TASKS", payload: savedTasks });
     }
 
-    // Focus on the task title input field when the component mounts
+    // Auto-focus the input field when the component mounts
     if (taskTitleInputRef.current) {
       taskTitleInputRef.current.focus();
-      console.log("Auto-focused on input field!"); // Debugging statement
-      setIsFocused(true); // Update state to highlight input
     }
   }, []);
 
-  // Save tasks to localStorage when tasks change
+  // Save tasks to localStorage whenever they change
   useEffect(() => {
     if (state.tasks.length > 0) {
       localStorage.setItem("tasks", JSON.stringify(state.tasks));
-      alert("Task list updated!");
     }
   }, [state.tasks]);
 
-  // Memoize the addTask function
   const addTask = useCallback(() => {
     if (state.newTaskTitle.trim() && state.newTaskDescription.trim()) {
       const newTask = {
@@ -103,17 +107,27 @@ const TaskManager = () => {
         completed: false,
       };
       dispatch({ type: "ADD_TASK", payload: newTask });
+
+      // Update localStorage after adding a new task
+      const updatedTasks = [...state.tasks, newTask];
+      localStorage.setItem("tasks", JSON.stringify(updatedTasks));
+
       dispatch({ type: "SET_NEW_TASK_TITLE", payload: "" });
       dispatch({ type: "SET_NEW_TASK_DESCRIPTION", payload: "" });
     }
-  }, [state.newTaskTitle, state.newTaskDescription]);
+  }, [state.newTaskTitle, state.newTaskDescription, state.tasks]);
 
-  // Memoize the deleteTask function
-  const deleteTask = useCallback((taskId) => {
-    dispatch({ type: "DELETE_TASK", payload: taskId });
-  }, []);
+  const deleteTask = useCallback(
+    (taskId) => {
+      const updatedTasks = state.tasks.filter((task) => task.id !== taskId);
+      dispatch({ type: "DELETE_TASK", payload: taskId });
 
-  // Memoize the toggleTaskCompletion function
+      // Update localStorage after deleting a task
+      localStorage.setItem("tasks", JSON.stringify(updatedTasks));
+    },
+    [state.tasks]
+  );
+
   const toggleTaskCompletion = useCallback((taskId) => {
     dispatch({ type: "TOGGLE_TASK_COMPLETION", payload: taskId });
   }, []);
@@ -143,6 +157,20 @@ const TaskManager = () => {
     dispatch({ type: "SET_NEW_TASK_DESCRIPTION", payload: e.target.value });
   };
 
+  const handleFilterChange = (e) => {
+    dispatch({ type: "SET_FILTER", payload: e.target.value });
+  };
+
+  // Memoize filtered tasks
+  const filteredTasks = useMemo(() => {
+    if (state.filter === "completed") {
+      return state.tasks.filter((task) => task.completed);
+    } else if (state.filter === "incomplete") {
+      return state.tasks.filter((task) => !task.completed);
+    }
+    return state.tasks;
+  }, [state.tasks, state.filter]);
+
   return (
     <div className={`task-manager-container ${theme}`}>
       <h1 className="app-title">Task Manager</h1>
@@ -152,15 +180,25 @@ const TaskManager = () => {
         Toggle {theme === "light" ? "Dark" : "Light"} Mode
       </button>
 
+      {/* Filter Controls */}
+      <div className="filter-controls">
+        <label>Filter Tasks: </label>
+        <select value={state.filter} onChange={handleFilterChange}>
+          <option value="all">All</option>
+          <option value="completed">Completed</option>
+          <option value="incomplete">Incomplete</option>
+        </select>
+      </div>
+
       {/* Add New Task Form */}
       <div className="task-form">
         <input
           type="text"
-          className={`task-input ${isFocused ? "highlighted" : ""}`} // Conditionally add the highlighted class
+          className={`task-input`}
           placeholder="Task Title"
           value={state.newTaskTitle}
           onChange={handleTitleChange}
-          ref={taskTitleInputRef} // Attach the ref to the input field
+          ref={taskTitleInputRef} // Reference for auto-focus
         />
         <input
           type="text"
@@ -173,7 +211,8 @@ const TaskManager = () => {
           className="add-task-btn"
           onClick={addTask}
           disabled={
-            !state.newTaskTitle.trim() || !state.newTaskDescription.trim()
+            state.newTaskTitle.trim() === "" ||
+            state.newTaskDescription.trim() === ""
           }
         >
           Add Task
@@ -182,19 +221,13 @@ const TaskManager = () => {
 
       {/* Task List */}
       <ul className="task-list">
-        {state.tasks.map((task) => (
+        {filteredTasks.map((task) => (
           <li
             key={task.id}
             className={`task-item ${task.completed ? "completed" : ""}`}
           >
-            <input
-              type="checkbox"
-              checked={task.completed}
-              onChange={() => toggleTaskCompletion(task.id)}
-            />
             <div className="task-title">{task.title}</div>
             <div className="task-description">{task.description}</div>
-
             <button
               className="edit-btn"
               onClick={() => editTask(task.id)} // Edit task
