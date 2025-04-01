@@ -177,7 +177,7 @@ const TaskManager = () => {
 
       {/* Dark Mode Toggle */}
       <button className="dark-mode-toggle" onClick={toggleTheme}>
-        Toggle {theme === "light" ? "Dark" : "Light"} Mode
+        {theme === "light" ? "Dark" : "Light"} Mode
       </button>
 
       {/* Filter Controls */}
