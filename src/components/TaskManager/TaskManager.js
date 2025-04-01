@@ -4,7 +4,6 @@ import React, {
   useCallback,
   useContext,
   useRef,
-  useState,
   useMemo,
 } from "react";
 import "./TaskManager.css";
